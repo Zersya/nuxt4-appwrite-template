@@ -165,6 +165,14 @@ async function createAttributes(databases) {
       required: false,
       default: null,
       array: false
+    },
+    {
+      key: 'createdBy',
+      type: 'string',
+      size: 36,
+      required: false,
+      default: null,
+      array: false
     }
   ];
 
@@ -264,6 +272,11 @@ async function createIndexes(databases) {
       key: 'text_search',
       type: 'fulltext',
       attributes: ['text']
+    },
+    {
+      key: 'createdBy_index',
+      type: 'key',
+      attributes: ['createdBy']
     }
   ];
 

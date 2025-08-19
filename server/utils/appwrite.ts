@@ -1,6 +1,7 @@
 import * as sdk from "node-appwrite";
 import type { H3Event } from "h3";
 
+// Use this for Admin System access only features (No Auth), usually use for Auth (Login, Register) or Server-side operations
 export const appwrite = (event: H3Event) => {
     const config = useRuntimeConfig(event);
 
@@ -41,7 +42,8 @@ export const appwrite = (event: H3Event) => {
     return { database, storage, users, account };
 }
 
-export const appwriteSession =(event: H3Event) => {
+// Use this for User (Auth) access only features (Mostly CRUD operations)
+export const appwriteSession = (event: H3Event) => {
     const config = useRuntimeConfig(event);
 
     // Validate required configuration
@@ -66,11 +68,18 @@ export const appwriteSession =(event: H3Event) => {
         });
     }
 
+    const cookies = parseCookies(event);
+    const sessionCookieName = `a_session_${config.appwrite.projectId}`;
+
     const client = new sdk.Client();
 
     client
         .setEndpoint(config.appwrite.endpoint)
         .setProject(config.appwrite.projectId);
+
+    if (cookies[sessionCookieName]) {
+        client.setSession(cookies[sessionCookieName]);
+    }
 
     const database = new sdk.Databases(client);
     const storage = new sdk.Storage(client);

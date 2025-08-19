@@ -1,10 +1,19 @@
-import { appwrite } from "../utils/appwrite";
+import { appwriteSession } from "../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../utils/const";
 import { ID } from "node-appwrite";
 
 export default defineEventHandler(async (event) => {
   try {
-    const { database } = appwrite(event);
+    // Validate user authentication
+    const session = await getUserSession(event);
+    if (!session || !session.user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: "Authentication required",
+      });
+    }
+
+    const { database } = appwriteSession(event);
     const body = await readBody(event);
 
     // Validate required fields
@@ -25,6 +34,7 @@ export default defineEventHandler(async (event) => {
       dueDate: body.dueDate || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      createdBy: session.user.id,
     };
 
     const todo = await database.createDocument(

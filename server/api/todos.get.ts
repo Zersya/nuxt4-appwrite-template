@@ -1,10 +1,26 @@
-import { appwrite } from "../utils/appwrite";
+import { Query } from "node-appwrite";
+import { appwriteSession } from "../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../utils/const";
 
 export default defineEventHandler(async (event) => {
   try {
-    const { database } = appwrite(event);
-    const todos = await database.listDocuments(TODOS_DATABASE_ID, 'todos', []);
+    // Validate user authentication
+    const session = await getUserSession(event);
+    if (!session || !session.user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: "Authentication required",
+      });
+    }
+
+    const { database } = appwriteSession(event);
+
+    // Filter todos by authenticated user
+    const todos = await database.listDocuments(
+      TODOS_DATABASE_ID,
+      'todos',
+      [Query.equal('createdBy', session.user.id)]
+    );
 
     return {
       status: 'success',

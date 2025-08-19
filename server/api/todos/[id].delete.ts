@@ -1,9 +1,18 @@
-import { appwrite } from "../../utils/appwrite";
+import { appwriteSession } from "../../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../../utils/const";
 
 export default defineEventHandler(async (event) => {
   try {
-    const { database } = appwrite(event);
+    // Validate user authentication
+    const session = await getUserSession(event);
+    if (!session || !session.user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: "Authentication required",
+      });
+    }
+
+    const { database } = appwriteSession(event);
     const todoId = getRouterParam(event, 'id');
 
     if (!todoId) {
@@ -13,8 +22,16 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // First, get the todo to check if it has children
+    // First, get the todo to check ownership and if it has children
     const todo = await database.getDocument(TODOS_DATABASE_ID, 'todos', todoId);
+
+    // Verify user owns the todo
+    if (todo.createdBy !== session.user.id) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "You can only delete your own todos",
+      });
+    }
     
     // If todo has children, we need to handle them
     // For now, we'll delete the parent and let children become orphaned

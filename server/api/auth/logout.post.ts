@@ -1,8 +1,8 @@
-import { appwrite } from "../../utils/appwrite";
+import { appwrite, appwriteSession } from "../../utils/appwrite";
 
 export default defineEventHandler(async (event) => {
   try {
-    const { account } = appwrite(event);
+    const { account } = appwriteSession(event);
     
     // Get current session to delete it from Appwrite
     const session = await getUserSession(event);

@@ -1,9 +1,18 @@
-import { appwrite } from "../../utils/appwrite";
+import { appwriteSession } from "../../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../../utils/const";
 
 export default defineEventHandler(async (event) => {
   try {
-    const { database } = appwrite(event);
+    // Validate user authentication
+    const session = await getUserSession(event);
+    if (!session || !session.user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: "Authentication required",
+      });
+    }
+
+    const { database } = appwriteSession(event);
     const todoId = getRouterParam(event, 'id');
     const body = await readBody(event);
 
@@ -12,6 +21,33 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: "Todo ID is required",
       });
+    }
+
+    // Verify user owns the todo
+    try {
+      const existingTodo = await database.getDocument(
+        TODOS_DATABASE_ID,
+        'todos',
+        todoId
+      );
+
+      if (existingTodo.createdBy !== session.user.id) {
+        throw createError({
+          statusCode: 403,
+          statusMessage: "You can only update your own todos",
+        });
+      }
+    } catch (error: any) {
+      if (error.statusCode === 403) {
+        throw error; // Re-throw permission errors
+      }
+      if (error.code === 404) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Todo not found",
+        });
+      }
+      throw error; // Re-throw other errors
     }
 
     // Prepare update data, only include provided fields
