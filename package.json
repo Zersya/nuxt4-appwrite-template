@@ -1,0 +1,25 @@
+{
+  "name": "nuxt-app",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "setup:database": "node scripts/setup-appwrite-database.js",
+    "setup:permissions": "node scripts/configure-permissions.js",
+    "verify:database": "node scripts/verify-database-setup.js",
+    "setup:complete": "node scripts/complete-setup.js"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.11.2",
+    "dotenv": "^16.4.7",
+    "node-appwrite": "^17.2.0",
+    "nuxt": "^4.0.3",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1"
+  }
+}
