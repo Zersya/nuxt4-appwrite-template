@@ -62,6 +62,7 @@ export default defineEventHandler(async (event) => {
     if (body.expanded !== undefined) updateData.expanded = body.expanded;
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.dueDate !== undefined) updateData.dueDate = body.dueDate;
+    if (body.attachments !== undefined) updateData.attachments = JSON.stringify(body.attachments);
 
     const todo = await database.updateDocument(
       TODOS_DATABASE_ID,

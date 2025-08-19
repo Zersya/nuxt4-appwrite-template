@@ -1,6 +1,6 @@
 import { ref, reactive } from "vue"
 import { defineStore } from "pinia"
-import type { Todo, TodoFilter } from "~~/shared/types"
+import type { Todo, TodoFilter, TodoAttachment } from "~~/shared/types"
 
 // Database todo format (flat structure with children as IDs)
 interface DbTodo {
@@ -11,6 +11,7 @@ interface DbTodo {
   expanded?: boolean
   priority?: 'low' | 'medium' | 'high'
   dueDate?: string
+  attachments?: string // JSON string of TodoAttachment[]
   createdAt?: string
   updatedAt?: string
 }
@@ -22,6 +23,15 @@ const transformDbTodoToTodo = (dbTodos: DbTodo[]): Todo[] => {
 
   // First pass: create all todos without children
   dbTodos.forEach(dbTodo => {
+    // Parse attachments from JSON string
+    let attachments: TodoAttachment[] = []
+    try {
+      attachments = dbTodo.attachments ? JSON.parse(dbTodo.attachments) : []
+    } catch (error) {
+      console.warn('Failed to parse attachments for todo:', dbTodo.$id, error)
+      attachments = []
+    }
+
     const todo: Todo = {
       id: dbTodo.$id,
       text: dbTodo.text,
@@ -29,6 +39,7 @@ const transformDbTodoToTodo = (dbTodos: DbTodo[]): Todo[] => {
       expanded: dbTodo.expanded || false,
       priority: dbTodo.priority,
       dueDate: dbTodo.dueDate,
+      attachments,
       createdAt: dbTodo.createdAt,
       updatedAt: dbTodo.updatedAt,
       children: []
@@ -213,6 +224,68 @@ export const useTodosStore = defineStore('todos', () => {
     findAndToggle(todos.value)
   }
 
+  // Attachment operations
+  const uploadAttachment = async (todoId: string, file: File) => {
+    try {
+      setLoading('submit', true)
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await $fetch<{ status: string; data: { attachment: TodoAttachment; todo: any } }>(`/api/todos/${todoId}/attachments`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.status === 'success') {
+        // Refresh todos to get updated data
+        await fetchTodos()
+        return response.data.attachment
+      }
+
+      throw new Error('Upload failed')
+    } catch (error) {
+      console.error('Error uploading attachment:', error)
+      throw error
+    } finally {
+      setLoading('submit', false)
+    }
+  }
+
+  const deleteAttachment = async (todoId: string, fileId: string) => {
+    try {
+      setLoading('submit', true)
+
+      const response = await $fetch<{ status: string; data: any }>(`/api/todos/${todoId}/attachments/${fileId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.status === 'success') {
+        // Refresh todos to get updated data
+        await fetchTodos()
+        return response.data
+      }
+
+      throw new Error('Delete failed')
+    } catch (error) {
+      console.error('Error deleting attachment:', error)
+      throw error
+    } finally {
+      setLoading('submit', false)
+    }
+  }
+
+  const downloadAttachment = async (todoId: string, fileId: string) => {
+    try {
+      // This will be handled by the component directly
+      // Just return the download URL
+      return `/api/todos/${todoId}/attachments/${fileId}?download=true`
+    } catch (error) {
+      console.error('Error getting download URL:', error)
+      throw error
+    }
+  }
+
   return {
     todos,
     filter,
@@ -226,5 +299,8 @@ export const useTodosStore = defineStore('todos', () => {
     deleteTodo,
     toggleCompleted,
     toggleExpanded,
+    uploadAttachment,
+    deleteAttachment,
+    downloadAttachment,
   }
 })

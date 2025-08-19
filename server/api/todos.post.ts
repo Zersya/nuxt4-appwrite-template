@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
       expanded: body.expanded || false,
       priority: body.priority || 'low',
       dueDate: body.dueDate || null,
+      attachments: '[]', // Initialize with empty attachments array
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: session.user.id,

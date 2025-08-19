@@ -59,21 +59,54 @@
     <!-- Add Todo Form -->
     <div class="todo-add-form">
       <form @submit.prevent="handleAddTodo" class="todo-form">
-        <input
-          v-model="newTodoText"
-          type="text"
-          placeholder="Add a new todo..."
-          class="todo-input"
-          :disabled="loading.submit"
-        />
-        <button
-          type="submit"
-          class="todo-add-button"
-          :disabled="!newTodoText.trim() || loading.submit"
-        >
-          <span v-if="loading.submit">Adding...</span>
-          <span v-else>Add</span>
-        </button>
+        <div class="todo-form-main">
+          <input
+            v-model="newTodoText"
+            type="text"
+            placeholder="Add a new todo..."
+            class="todo-input"
+            :disabled="loading.submit"
+          />
+          <button
+            type="button"
+            @click="toggleAttachmentUpload"
+            class="todo-attachment-toggle"
+            :class="{ 'todo-attachment-toggle-active': showAttachmentUpload }"
+            :disabled="loading.submit"
+            title="Add attachments"
+          >
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M21.44 11.05L12.25 20.24C11.1242 21.3658 9.59722 21.9983 8.005 21.9983C6.41278 21.9983 4.88583 21.3658 3.76 20.24C2.63417 19.1142 2.00166 17.5872 2.00166 15.995C2.00166 14.4028 2.63417 12.8758 3.76 11.75L12.95 2.56C13.7006 1.80944 14.7186 1.38787 15.78 1.38787C16.8414 1.38787 17.8594 1.80944 18.61 2.56C19.3606 3.31056 19.7821 4.32861 19.7821 5.39C19.7821 6.45139 19.3606 7.46944 18.61 8.22L9.41 17.41C9.03494 17.7851 8.52433 17.9961 7.99 17.9961C7.45567 17.9961 6.94506 17.7851 6.57 17.41C6.19494 17.0349 5.98387 16.5243 5.98387 15.99C5.98387 15.4557 6.19494 14.9451 6.57 14.57L15.07 6.07"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="submit"
+            class="todo-add-button"
+            :disabled="!newTodoText.trim() || loading.submit"
+          >
+            <span v-if="loading.submit">Adding...</span>
+            <span v-else>Add</span>
+          </button>
+        </div>
+
+        <!-- File Upload Section -->
+        <div v-if="showAttachmentUpload" class="todo-attachment-upload">
+          <FileUpload
+            ref="fileUploadRef"
+            v-model="selectedFiles"
+            :multiple="true"
+            :disabled="loading.submit"
+            @upload-progress="handleUploadProgress"
+            @upload-complete="handleUploadComplete"
+            @upload-error="handleUploadError"
+          />
+        </div>
       </form>
     </div>
     <!-- Main Content -->
@@ -103,6 +136,7 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { Todo, TodoFilter } from '../../../shared/types'
 import TodoList from './TodoList.vue'
+import FileUpload from '../ui/FileUpload.vue'
 import { useTodosStore } from '~/stores/todos'
 import { useAuthStore } from '~/stores/auth'
 
@@ -110,7 +144,7 @@ const store = useTodosStore()
 // Use storeToRefs for reactive state properties
 const { todos, filter, loading: storeLoading } = storeToRefs(store)
 // Destructure actions directly from the store
-const { fetchTodos, setLoading, setFilter, toggleCompleted, toggleExpanded, createTodo, deleteTodo } = store
+const { fetchTodos, setLoading, setFilter, toggleCompleted, toggleExpanded, createTodo, deleteTodo, uploadAttachment } = store
 
 // Auth store for user session and logout
 const authStore = useAuthStore()
@@ -125,6 +159,9 @@ const loading = computed(() => ({
 
 // Form state
 const newTodoText = ref('')
+const showAttachmentUpload = ref(false)
+const selectedFiles = ref<File[]>([])
+const fileUploadRef = ref()
 
 // Filter options
 const filterOptions = [
@@ -197,14 +234,30 @@ const handleAddTodo = async () => {
   if (!newTodoText.value.trim()) return
 
   try {
-    await createTodo({
+    const newTodo = await createTodo({
       text: newTodoText.value.trim(),
       completed: false,
       children: [],
       expanded: false,
       priority: 'low'
     })
+
+    // Upload attachments if any
+    if (selectedFiles.value.length > 0 && newTodo) {
+      for (const file of selectedFiles.value) {
+        try {
+          await uploadAttachment(newTodo.$id, file)
+        } catch (error) {
+          console.error('Failed to upload attachment:', error)
+        }
+      }
+    }
+
+    // Reset form
     newTodoText.value = ''
+    selectedFiles.value = []
+    showAttachmentUpload.value = false
+    fileUploadRef.value?.clearFiles()
   } catch (error) {
     console.error('Failed to create todo:', error)
     // You could add user-friendly error handling here
@@ -218,6 +271,30 @@ const handleDeleteTodo = async (id: string) => {
     console.error('Failed to delete todo:', error)
     // You could add user-friendly error handling here
   }
+}
+
+// Attachment methods
+const toggleAttachmentUpload = () => {
+  showAttachmentUpload.value = !showAttachmentUpload.value
+  if (!showAttachmentUpload.value) {
+    selectedFiles.value = []
+    fileUploadRef.value?.clearFiles()
+  }
+}
+
+const handleUploadProgress = (index: number, progress: number) => {
+  // Handle upload progress if needed
+  console.log(`File ${index} upload progress: ${progress}%`)
+}
+
+const handleUploadComplete = (index: number, file: File) => {
+  // Handle upload completion if needed
+  console.log(`File ${index} upload completed:`, file.name)
+}
+
+const handleUploadError = (index: number, error: string) => {
+  // Handle upload error
+  console.error(`File ${index} upload error:`, error)
 }
 
 
@@ -351,12 +428,19 @@ onMounted(() => {
 
 .todo-form {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.todo-form-main {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .todo-input {
@@ -396,6 +480,48 @@ onMounted(() => {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.todo-attachment-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.todo-attachment-toggle:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.todo-attachment-toggle-active {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.todo-attachment-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.todo-attachment-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.todo-attachment-upload {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .todo-filters {

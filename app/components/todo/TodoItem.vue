@@ -66,6 +66,20 @@
         </span>
       </div>
 
+      <!-- Attachment Indicator -->
+      <div v-if="hasAttachments" class="todo-attachment-indicator" :title="`${todo.attachments?.length} attachment(s)`">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M21.44 11.05L12.25 20.24C11.1242 21.3658 9.59722 21.9983 8.005 21.9983C6.41278 21.9983 4.88583 21.3658 3.76 20.24C2.63417 19.1142 2.00166 17.5872 2.00166 15.995C2.00166 14.4028 2.63417 12.8758 3.76 11.75L12.95 2.56C13.7006 1.80944 14.7186 1.38787 15.78 1.38787C16.8414 1.38787 17.8594 1.80944 18.61 2.56C19.3606 3.31056 19.7821 4.32861 19.7821 5.39C19.7821 6.45139 19.3606 7.46944 18.61 8.22L9.41 17.41C9.03494 17.7851 8.52433 17.9961 7.99 17.9961C7.45567 17.9961 6.94506 17.7851 6.57 17.41C6.19494 17.0349 5.98387 16.5243 5.98387 15.99C5.98387 15.4557 6.19494 14.9451 6.57 14.57L15.07 6.07"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span class="todo-attachment-count">{{ todo.attachments?.length }}</span>
+      </div>
+
       <!-- Children Count -->
       <div
         v-if="hasChildren"
@@ -96,6 +110,17 @@
       </button>
     </div>
 
+    <!-- Attachments -->
+    <div v-if="hasAttachments" class="todo-attachments" :style="{ paddingLeft: `${(level + 1) * 24}px` }">
+      <AttachmentDisplay
+        :attachments="todo.attachments!"
+        :todo-id="todo.id"
+        @delete-attachment="handleDeleteAttachment"
+        @download-attachment="handleDownloadAttachment"
+        @preview-attachment="handlePreviewAttachment"
+      />
+    </div>
+
     <!-- Children (Recursive) -->
     <div
       v-if="hasChildren && todo.expanded"
@@ -117,6 +142,8 @@ import { computed } from 'vue'
 import type { TodoItemProps } from '../../../shared/types'
 import TodoCheckbox from './TodoCheckbox.vue'
 import TodoList from './TodoList.vue'
+import AttachmentDisplay from '../ui/AttachmentDisplay.vue'
+import { useTodosStore } from '~/stores/todos'
 
 interface Props extends TodoItemProps {
   level?: number
@@ -131,6 +158,9 @@ const emit = defineEmits<{
   'toggle-expanded': [id: string]
   'delete-todo': [id: string]
 }>()
+
+// Store
+const todosStore = useTodosStore()
 
 // Computed properties
 const hasChildren = computed(() => 
@@ -150,6 +180,10 @@ const isOverdue = computed(() => {
   return new Date(props.todo.dueDate) < new Date()
 })
 
+const hasAttachments = computed(() =>
+  props.todo.attachments && props.todo.attachments.length > 0
+)
+
 // Methods
 const toggleCompleted = () => {
   emit('toggle-completed', props.todo.id)
@@ -168,17 +202,40 @@ const formatDueDate = (dateString: string) => {
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
-  
+
   if (date.toDateString() === today.toDateString()) {
     return 'Today'
   } else if (date.toDateString() === tomorrow.toDateString()) {
     return 'Tomorrow'
   } else {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     })
   }
+}
+
+// Attachment handlers
+const handleDeleteAttachment = async (fileId: string) => {
+  try {
+    await todosStore.deleteAttachment(props.todo.id, fileId)
+  } catch (error) {
+    console.error('Failed to delete attachment:', error)
+  }
+}
+
+const handleDownloadAttachment = async (fileId: string) => {
+  try {
+    await todosStore.downloadAttachment(props.todo.id, fileId)
+    // The download will be handled by the AttachmentDisplay component
+  } catch (error) {
+    console.error('Failed to download attachment:', error)
+  }
+}
+
+const handlePreviewAttachment = async (fileId: string) => {
+  // Preview is handled by the AttachmentDisplay component
+  console.log('Preview attachment:', fileId)
 }
 
 
@@ -374,5 +431,31 @@ const formatDueDate = (dateString: string) => {
   .todo-due-date {
     font-size: 11px;
   }
+}
+
+/* Attachment styles */
+.todo-attachment-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #f3f4f6;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+}
+
+.todo-attachment-indicator svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.todo-attachment-count {
+  font-weight: 500;
+}
+
+.todo-attachments {
+  margin-top: 0.5rem;
 }
 </style>
