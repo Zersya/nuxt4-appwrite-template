@@ -30,6 +30,18 @@
       </div>
     </header>
 
+    <!-- User Info -->
+    <div class="todo-user-info">
+      <div class="todo-user-details">
+        <span class="todo-user-greeting">Hello, {{ user?.name || 'User' }}!</span>
+        <span class="todo-user-email">{{ user?.email }}</span>
+      </div>
+      <button @click="logout" class="todo-logout-button" :disabled="loading.logout">
+        <span v-if="loading.logout">Logging out...</span>
+        <span v-else>Logout</span>
+      </button>
+    </div>
+
     <!-- Filters -->
     <div class="todo-filters">
       <button
@@ -92,12 +104,24 @@ import { storeToRefs } from 'pinia'
 import type { Todo, TodoFilter } from '../../../shared/types'
 import TodoList from './TodoList.vue'
 import { useTodosStore } from '~/stores/todos'
+import { useAuthStore } from '~/stores/auth'
 
 const store = useTodosStore()
 // Use storeToRefs for reactive state properties
-const { todos, filter, loading } = storeToRefs(store)
+const { todos, filter, loading: storeLoading } = storeToRefs(store)
 // Destructure actions directly from the store
 const { fetchTodos, setLoading, setFilter, toggleCompleted, toggleExpanded, createTodo, deleteTodo } = store
+
+// Auth store for user session and logout
+const authStore = useAuthStore()
+const { user, loading: authLoading } = storeToRefs(authStore)
+const { logout } = authStore
+
+// Loading states
+const loading = computed(() => ({
+  ...storeLoading.value,
+  logout: authLoading.value.logout
+}))
 
 // Form state
 const newTodoText = ref('')
@@ -196,6 +220,8 @@ const handleDeleteTodo = async (id: string) => {
   }
 }
 
+
+
 onMounted(() => {
   setLoading('fetch', true)
   setTimeout(() => {
@@ -265,6 +291,58 @@ onMounted(() => {
   background: linear-gradient(90deg, var(--todo-primary-color, #2563eb), var(--todo-success, #10b981));
   border-radius: 4px;
   transition: width 300ms ease-in-out;
+}
+
+.todo-user-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.todo-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.todo-user-greeting {
+  font-weight: 600;
+  color: var(--todo-text-primary, #0f172a);
+  font-size: 16px;
+}
+
+.todo-user-email {
+  font-size: 14px;
+  color: var(--todo-text-secondary, #334155);
+}
+
+.todo-logout-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+}
+
+.todo-logout-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.todo-logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .todo-add-form {
@@ -427,6 +505,17 @@ onMounted(() => {
   .todo-header-content,
   .todo-container {
     padding: 16px;
+  }
+
+  .todo-user-info {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .todo-user-details {
+    text-align: center;
   }
   
   .todo-title {

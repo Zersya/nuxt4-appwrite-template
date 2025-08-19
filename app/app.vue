@@ -1,11 +1,11 @@
 <template>
   <div>
-    <TodoApp />
+    <NuxtPage />
   </div>
 </template>
 
 <script setup>
-import TodoApp from '~/components/todo/TodoApp.vue'
+// Global styles and setup
 </script>
 
 <style>
