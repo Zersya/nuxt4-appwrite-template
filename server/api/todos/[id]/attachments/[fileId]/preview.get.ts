@@ -103,9 +103,13 @@ export default defineEventHandler(async (event) => {
       // Set appropriate headers
       setHeader(event, 'Content-Type', contentType);
       setHeader(event, 'Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+
+      // fileData is an ArrayBuffer
+      // Convert ArrayBuffer to Uint8Array
+      const uint8Array = new Uint8Array(fileData);
       
       // Return the file data
-      return fileData;
+      return uint8Array;
     } catch (error: any) {
       console.error('Preview generation error:', error);
       
