@@ -1,5 +1,5 @@
 import { Query } from "node-appwrite";
-import { appwriteSession } from "../utils/appwrite";
+import { appwriteSessionBridge } from "../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../utils/const";
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const { database } = appwriteSession(event);
+    const { database } = await appwriteSessionBridge(event);
 
     // Filter todos by authenticated user
     const todos = await database.listDocuments(

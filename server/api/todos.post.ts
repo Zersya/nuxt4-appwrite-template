@@ -1,4 +1,4 @@
-import { appwriteSession } from "../utils/appwrite";
+import { appwriteSessionBridge } from "../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../utils/const";
 import { ID } from "node-appwrite";
 
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const { database } = appwriteSession(event);
+    const { database } = await appwriteSessionBridge(event);
     const body = await readBody(event);
 
     // Validate required fields

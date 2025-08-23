@@ -1,4 +1,4 @@
-import { appwriteSession } from "../../utils/appwrite";
+import { appwriteSessionBridge } from "../../utils/appwrite";
 import { TODOS_DATABASE_ID } from "../../utils/const";
 
 export default defineEventHandler(async (event) => {
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const { database } = appwriteSession(event);
+    const { database } = await appwriteSessionBridge(event);
     const todoId = getRouterParam(event, 'id');
     const body = await readBody(event);
 

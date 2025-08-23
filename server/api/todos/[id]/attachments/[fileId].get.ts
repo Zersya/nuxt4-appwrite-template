@@ -1,4 +1,4 @@
-import { appwriteSession } from "../../../../utils/appwrite";
+import { appwriteSessionBridge } from "../../../../utils/appwrite";
 import { TODOS_DATABASE_ID, TODO_FILES_ID } from "../../../../utils/const";
 import type { TodoAttachment } from "~~/shared/types";
 
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const { database, storage } = appwriteSession(event);
+    const { database, storage } = await appwriteSessionBridge(event);
     const todoId = getRouterParam(event, 'id');
     const fileId = getRouterParam(event, 'fileId');
 
